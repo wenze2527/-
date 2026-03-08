@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金口訣自動排盤系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- 標題區 -->
+        <div class="bg-indigo-900 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold tracking-widest">金口訣排盤</h1>
+            <p class="text-indigo-200 mt-2 text-sm">簡易四位推算系統 (人元、貴神、將神、地分)</p>
+        </div>
+
+        <!-- 快速日期轉換區 -->
+        <div class="p-6 md:p-8 border-b border-slate-100 bg-indigo-50/50">
+            <h2 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                快速日期轉換 (支援西元/民國)
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="col-span-2 md:col-span-1">
+                    <input type="number" id="auto_year" placeholder="年 (例 2024 或 113)" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                </div>
+                <div>
+                    <input type="number" id="auto_month" placeholder="月 (1-12)" min="1" max="12" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                </div>
+                <div>
+                    <input type="number" id="auto_day" placeholder="日 (1-31)" min="1" max="31" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                </div>
+                <div>
+                    <input type="number" id="auto_hour" placeholder="時 (0-23)" min="0" max="23" class="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                </div>
+                <div class="col-span-2 md:col-span-1">
+                    <button onclick="convertDate()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow transition duration-200 active:scale-95 text-sm">
+                        自動帶入
+                    </button>
+                </div>
+            </div>
+            <p id="convert_msg" class="text-sm text-emerald-700 font-semibold mt-3 hidden"></p>
+            <p class="text-xs text-slate-500 mt-2">提示：月將與地分需視當下節氣與方位手動確認。</p>
+        </div>
+
+        <!-- 輸入表單區 -->
+        <div class="p-6 md:p-8">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                <!-- 日干 -->
+                <div class="flex flex-col">
+                    <label class="mb-2 text-sm font-semibold text-slate-600">日干 (Day Stem)</label>
+                    <select id="day_stem" class="p-3 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"></select>
+                </div>
+                
+                <!-- 月將 -->
+                <div class="flex flex-col">
+                    <label class="mb-2 text-sm font-semibold text-slate-600">月將 (Month General)</label>
+                    <select id="month_general" class="p-3 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"></select>
+                </div>
+
+                <!-- 時辰 -->
+                <div class="flex flex-col">
+                    <label class="mb-2 text-sm font-semibold text-slate-600">時辰 (Hour Branch)</label>
+                    <select id="hour_branch" class="p-3 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"></select>
+                </div>
+
+                <!-- 地分 -->
+                <div class="flex flex-col">
+                    <label class="mb-2 text-sm font-semibold text-slate-600">地分 (Position)</label>
+                    <select id="di_fen" class="p-3 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"></select>
+                </div>
+
+                <!-- 晝夜 -->
+                <div class="flex flex-col">
+                    <label class="mb-2 text-sm font-semibold text-slate-600">起貴人 (Day/Night)</label>
+                    <select id="day_night" class="p-3 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                        <option value="day">晝貴 (白天)</option>
+                        <option value="night">夜貴 (夜晚)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 求測事項 (新增) -->
+            <div class="mb-8 border-t border-slate-200 pt-6">
+                <label class="mb-2 text-sm font-semibold text-slate-600 block">求測事項 <span class="text-xs text-slate-400 font-normal">(選填，讓 AI 解盤更精準)</span></label>
+                <input type="text" id="user_question" placeholder="請輸入想占卜的事情，例如：今天的面試會順利嗎？近期的財運如何？" class="w-full p-4 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm">
+            </div>
+
+            <!-- 按鈕 -->
+            <button onclick="calculate()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg transition duration-200 active:scale-95">
+                開始排盤
+            </button>
+        </div>
+
+        <!-- 結果展示區 (預設隱藏) -->
+        <div id="result_container" class="hidden border-t border-slate-100 bg-slate-50 p-6 md:p-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-6 text-center">排盤結果</h2>
+            
+            <div class="flex flex-col space-y-4 max-w-sm mx-auto mb-8" id="result_cards">
+                <!-- JavaScript 將會動態生成四位卡片 -->
+            </div>
+
+            <!-- 小六壬結果區塊 (新增) -->
+            <div id="xlr_container" class="max-w-sm mx-auto mb-8 p-5 bg-blue-50 border-2 border-blue-200 rounded-xl shadow-sm text-center hidden transform transition hover:scale-105">
+                <h3 class="text-lg font-bold text-blue-800 mb-2">🎲 小六壬輔助占卜</h3>
+                <p class="text-sm text-blue-600 mb-1">隨機觸機數字：<span id="xlr_nums" class="font-mono font-bold text-base"></span></p>
+                <div class="text-2xl font-black tracking-widest text-blue-900 mt-2" id="xlr_state"></div>
+            </div>
+
+            <!-- AI 解盤區塊 (新增) -->
+            <div class="max-w-2xl mx-auto border-t border-slate-200 pt-8 mt-4">
+                <button onclick="generateAIReading()" id="ai_btn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg transition duration-200 active:scale-95 flex items-center justify-center">
+                    ✨ 獲取 AI 智能解盤
+                </button>
+                
+                <!-- 載入中動畫 -->
+                <div id="ai_loading" class="hidden mt-6 text-center text-slate-500 flex flex-col items-center">
+                    <svg class="animate-spin h-10 w-10 text-purple-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="animate-pulse font-semibold text-purple-800">AI 大師正在為您參透五行生剋與神煞奧秘，請稍候...</p>
+                </div>
+
+                <!-- AI 結果顯示區 -->
+                <div id="ai_result_box" class="hidden mt-6 bg-white border border-purple-200 p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold text-purple-900 mb-4 flex items-center border-b border-purple-100 pb-2">
+                        <span class="mr-2">🔮</span> 大師 AI 解析
+                    </h3>
+                    <div id="ai_content" class="text-slate-700 leading-relaxed whitespace-pre-wrap font-medium"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 核心數據
+        const stems = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+        const branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+        
+        // 十二貴神數據 (名稱與本家地支)
+        const godData = [
+            {name: "貴神", branch: "丑"}, {name: "騰蛇", branch: "巳"}, {name: "朱雀", branch: "午"},
+            {name: "六合", branch: "卯"}, {name: "勾陳", branch: "辰"}, {name: "青龍", branch: "寅"},
+            {name: "天空", branch: "戌"}, {name: "白虎", branch: "申"}, {name: "太常", branch: "未"},
+            {name: "玄武", branch: "亥"}, {name: "太陰", branch: "酉"}, {name: "天后", branch: "子"}
+        ];
+
+        // 五行對照表
+        const fiveElements = {
+            "子": "水", "亥": "水", "寅": "木", "卯": "木", "巳": "火", "午": "火",
+            "申": "金", "酉": "金", "辰": "土", "戌": "土", "丑": "土", "未": "土",
+            "甲": "木", "乙": "木", "丙": "火", "丁": "火", "戊": "土", "己": "土",
+            "庚": "金", "辛": "金", "壬": "水", "癸": "水"
+        };
+
+        // 五行顏色配置 (Tailwind 類別)
+        const elementColors = {
+            "木": "bg-emerald-100 text-emerald-800 border-emerald-300",
+            "火": "bg-rose-100 text-rose-800 border-rose-300",
+            "土": "bg-amber-100 text-amber-800 border-amber-300",
+            "金": "bg-slate-200 text-slate-800 border-slate-400",
+            "水": "bg-sky-100 text-sky-800 border-sky-300"
+        };
+
+        // 小六壬數據
+        const xlrData = [
+            { name: "大安", desc: "吉 (安泰、平穩)" },
+            { name: "留連", desc: "平 (拖延、反覆)" },
+            { name: "速喜", desc: "吉 (迅速、喜慶)" },
+            { name: "赤口", desc: "凶 (口舌、爭執)" },
+            { name: "小吉", desc: "吉 (和合、順利)" },
+            { name: "空亡", desc: "凶 (落空、虛無)" }
+        ];
+
+        // 貴人起點對照 (白天, 夜晚) - 存儲地支的 Index
+        const guiStarts = {
+            "甲": [1, 7], "戊": [1, 7], "庚": [1, 7], // 丑, 未
+            "乙": [0, 8], "己": [0, 8],             // 子, 申
+            "丙": [11, 9], "丁": [11, 9],           // 亥, 酉
+            "壬": [3, 5], "癸": [3, 5],             // 卯, 巳
+            "辛": [6, 2]                            // 午, 寅
+        };
+
+        // 儲存最新的排盤結果供 AI 使用
+        let currentSpread = [];
+        let currentXlr = null;
+
+        // 預設填寫當前時間
+        function fillCurrentTime() {
+            const now = new Date();
+            document.getElementById('auto_year').value = now.getFullYear();
+            document.getElementById('auto_month').value = now.getMonth() + 1;
+            document.getElementById('auto_day').value = now.getDate();
+            document.getElementById('auto_hour').value = now.getHours();
+        }
+
+        // 處理日期轉換邏輯
+        function convertDate() {
+            let year = parseInt(document.getElementById('auto_year').value);
+            let month = parseInt(document.getElementById('auto_month').value);
+            let day = parseInt(document.getElementById('auto_day').value);
+            let hour = parseInt(document.getElementById('auto_hour').value);
+
+            if (!year || !month || !day || isNaN(hour)) {
+                alert("請填寫完整的年、月、日、時");
+                return;
+            }
+
+            // 處理民國年轉換 (小於 1000 視為民國)
+            let displayYear = year;
+            if (year < 1000) {
+                year += 1911;
+                displayYear = `民國 ${displayYear} (${year})`;
+            } else {
+                displayYear = `西元 ${year}`;
+            }
+
+            // 計算日干支 (以 2000-01-01 戊午日為基準: 天干戊=4, 地支午=6)
+            // 將時間設為中午 12 點以避開時區影響跨日
+            const targetDate = new Date(year, month - 1, day, 12, 0, 0);
+            const anchorDate = new Date(2000, 0, 1, 12, 0, 0);
+            const diffTime = targetDate - anchorDate;
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            const stemIdx = mod(4 + diffDays, 10);
+            const branchIdx = mod(6 + diffDays, 12);
+            const dayStem = stems[stemIdx];
+            const dayBranch = branches[branchIdx];
+
+            // 計算時辰 (23-1 子時, 1-3 丑時, 以此類推)
+            const hourBranchIdx = Math.floor(mod(hour + 1, 24) / 2);
+            const hourBranch = branches[hourBranchIdx];
+
+            // 判斷晝夜 (簡單以卯 05:00 ~ 酉 17:59 為晝)
+            const isDay = (hour >= 5 && hour < 18);
+
+            // 自動帶入表單對應欄位
+            document.getElementById('day_stem').value = dayStem;
+            document.getElementById('hour_branch').value = hourBranch;
+            document.getElementById('day_night').value = isDay ? "day" : "night";
+
+            // 更新提示訊息
+            const msgEl = document.getElementById('convert_msg');
+            msgEl.textContent = `✅ 轉換成功：${displayYear}年${month}月${day}日為【${dayStem}${dayBranch}日】，${hour}時為【${hourBranch}時】。表單已自動更新！`;
+            msgEl.classList.remove('hidden');
+        }
+
+        // 初始化下拉選單
+        function initSelects() {
+            const populate = (id, arr) => {
+                const select = document.getElementById(id);
+                arr.forEach(item => {
+                    const option = document.createElement("option");
+                    option.value = item;
+                    option.textContent = item;
+                    select.appendChild(option);
+                });
+            };
+            populate("day_stem", stems);
+            populate("month_general", branches);
+            populate("hour_branch", branches);
+            populate("di_fen", branches);
+            
+            // 預設選中範例值：甲日、亥將、午時、子地分
+            document.getElementById("month_general").value = "亥";
+            document.getElementById("hour_branch").value = "午";
+            document.getElementById("di_fen").value = "子";
+        }
+
+        // 安全的 modulo 計算 (避免負數問題)
+        function mod(n, m) {
+            return ((n % m) + m) % m;
+        }
+
+        // 計算與排盤
+        function calculate() {
+            // 讀取輸入值
+            const dayStem = document.getElementById("day_stem").value;
+            const monthGeneral = document.getElementById("month_general").value;
+            const hourBranch = document.getElementById("hour_branch").value;
+            const diFen = document.getElementById("di_fen").value;
+            const isDaytime = document.getElementById("day_night").value === "day";
+
+            const stemIdx = stems.indexOf(dayStem);
+            const monthIdx = branches.indexOf(monthGeneral);
+            const hourIdx = branches.indexOf(hourBranch);
+            const diFenIdx = branches.indexOf(diFen);
+
+            // 1. 地分
+            const dVal = diFen;
+            const dEle = fiveElements[dVal];
+
+            // 2. 將神 (月將加正時，數到地分)
+            const jiangIdx = mod(monthIdx + diFenIdx - hourIdx, 12);
+            const jVal = branches[jiangIdx];
+            const jEle = fiveElements[jVal];
+
+            // 3. 貴神 (根據日干找起點，簡化版順推至地分)
+            const startIdx = isDaytime ? guiStarts[dayStem][0] : guiStarts[dayStem][1];
+            const godIdx = mod(diFenIdx - startIdx, 12);
+            const guiShenObj = godData[godIdx];
+            const gVal = `${guiShenObj.name}(${guiShenObj.branch})`; // 顯示神名與地支
+            const gEle = fiveElements[guiShenObj.branch];
+
+            // 4. 人元 (五虎遁：日干序*2 + 地分序)
+            const humanIdx = mod(stemIdx * 2 + diFenIdx, 10);
+            const rVal = stems[humanIdx];
+            const rEle = fiveElements[rVal];
+
+            // 準備渲染資料
+            const results = [
+                { title: "四. 人元", value: rVal, element: rEle },
+                { title: "三. 貴神", value: gVal, element: gEle },
+                { title: "二. 將神", value: jVal, element: jEle },
+                { title: "一. 地分", value: dVal, element: dEle }
+            ];
+
+            // 儲存到全域變數供 AI 讀取
+            currentSpread = results;
+
+            // --- 小六壬計算 (隨機三數法) ---
+            // 產生三個 1~9 的隨機數
+            const n1 = Math.floor(Math.random() * 9) + 1;
+            const n2 = Math.floor(Math.random() * 9) + 1;
+            const n3 = Math.floor(Math.random() * 9) + 1;
+            
+            // 算法：(N1+N2+N3-3) 取 6 的餘數
+            const xlrIdx = mod(n1 + n2 + n3 - 3, 6);
+            currentXlr = {
+                nums: `${n1}, ${n2}, ${n3}`,
+                result: xlrData[xlrIdx]
+            };
+
+            // 更新小六壬 UI
+            document.getElementById("xlr_nums").textContent = currentXlr.nums;
+            document.getElementById("xlr_state").textContent = `${currentXlr.result.name} - ${currentXlr.result.desc}`;
+            document.getElementById("xlr_container").classList.remove("hidden");
+
+            // 每次重新排盤時，重置 AI 區塊狀態
+            document.getElementById("ai_result_box").classList.add("hidden");
+            document.getElementById("ai_content").textContent = "";
+            document.getElementById("ai_btn").classList.remove("hidden");
+
+            renderResults(results);
+        }
+
+        // 渲染結果卡片
+        function renderResults(results) {
+            const container = document.getElementById("result_cards");
+            container.innerHTML = ""; // 清空舊結果
+
+            results.forEach(res => {
+                const colorClass = elementColors[res.element] || "bg-gray-100 text-gray-800";
+                
+                const card = document.createElement("div");
+                card.className = `flex items-center justify-between p-4 rounded-xl border-2 shadow-sm ${colorClass} transform transition hover:scale-105`;
+                
+                card.innerHTML = `
+                    <div class="text-lg font-bold opacity-80">${res.title}</div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-2xl font-black tracking-widest">${res.value}</span>
+                        <span class="px-3 py-1 rounded-full bg-white bg-opacity-50 text-sm font-bold shadow-sm">
+                            ${res.element}
+                        </span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // 顯示結果區塊
+            document.getElementById("result_container").classList.remove("hidden");
+            // 滾動到結果
+            document.getElementById("result_container").scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- Gemini API 串接與指數退避重試邏輯 ---
+        async function fetchGeminiWithRetry(prompt, maxRetries = 5) {
+            const apiKey = ""; // 執行環境會自動注入
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "AI 無法生成解析，請稍後再試。";
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        return "連線至 AI 伺服器失敗，請檢查網路狀態或稍後再試。";
+                    }
+                    // 指數退避策略：1s, 2s, 4s, 8s, 16s
+                    await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000));
+                }
+            }
+        }
+
+        // 產生 AI 解盤
+        async function generateAIReading() {
+            if (!currentSpread || currentSpread.length === 0) {
+                return;
+            }
+
+            const btn = document.getElementById("ai_btn");
+            const loading = document.getElementById("ai_loading");
+            const resultBox = document.getElementById("ai_result_box");
+            const contentBox = document.getElementById("ai_content");
+            const questionInput = document.getElementById("user_question").value.trim();
+
+            // UI 狀態更新：隱藏按鈕、顯示載入中
+            btn.classList.add("hidden");
+            loading.classList.remove("hidden");
+            resultBox.classList.add("hidden");
+
+            // 構建傳送給 Gemini 的 Prompt (提示詞)
+            let questionText = questionInput ? `使用者求測的事情是：「${questionInput}」。` : "使用者沒有輸入具體問題，請給予當下整體的綜合運勢與提醒。";
+            
+            const spreadText = currentSpread.map(item => `${item.title}: ${item.value} (${item.element})`).join('\n');
+            const xlrText = currentXlr ? `隨機觸機數字：${currentXlr.nums} -> 結果：${currentXlr.result.name} (${currentXlr.result.desc})` : "無";
+
+            const prompt = `
+你是一位精通中國傳統術數「大六壬金口訣」與「小六壬」的命理大師。
+請根據以下的排盤結果，為使用者進行深入淺出的解盤。
+
+${questionText}
+
+【金口訣排盤結果】：
+${spreadText}
+
+【小六壬輔助占卜】：
+${xlrText}
+
+請根據金口訣的「五行生剋關係」與神將傳統含義，並結合小六壬的「吉凶直觀狀態」，給出一段專業但白話的解析。
+請包含以下四個部分：
+1. 【格局分析】：金口訣這四個元素的五行生剋狀態如何？誰生誰？誰剋誰？
+2. 【輔助占機】：小六壬的結果帶來了什麼額外的直觀暗示？
+3. 【吉凶判斷】：針對使用者的問題，目前的阻力與助力在哪裡？
+4. 【統一結論】：綜合上述兩種術數，給出一個最終的定論與具體的行動建議。
+
+請使用繁體中文（台灣習慣用語）回答。排版要清晰易讀。
+`;
+
+            // 呼叫 API
+            const aiResponse = await fetchGeminiWithRetry(prompt);
+
+            // 恢復 UI 狀態並顯示結果
+            loading.classList.add("hidden");
+            btn.classList.remove("hidden");
+            
+            contentBox.textContent = aiResponse;
+            resultBox.classList.remove("hidden");
+            
+            // 畫面平滑滾動到解析區塊
+            resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 網頁載入後執行初始化
+        window.onload = function() {
+            initSelects();
+            fillCurrentTime();
+        };
+    </script>
+</body>
+</html>
